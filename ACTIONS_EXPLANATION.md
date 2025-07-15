@@ -1,6 +1,6 @@
 # Explicação das GitHub Actions Criadas
 
-Aqui está um detalhamento das duas GitHub Actions que foram configuradas neste projeto. Ambas têm o mesmo objetivo — bloquear pull requests que contenham arquivos `.view.lkml` vazios — mas utilizam abordagens técnicas diferentes.
+Duas GitHub Actions que foram configuradas neste projeto. Ambas têm o mesmo objetivo — bloquear pull requests que contenham arquivos `.view.lkml` vazios — mas utilizam abordagens técnicas diferentes.
 
 ## Conceitos Fundamentais do GitHub Actions
 
