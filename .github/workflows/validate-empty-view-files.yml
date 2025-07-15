@@ -1,0 +1,49 @@
+
+name: "Block Empty LookML Views"
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  validate-view-files:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          # Fetch all history for all branches and tags so we can diff against the base branch
+          fetch-depth: 0
+
+      - name: Find empty .view.lkml files
+        run: |
+          set -e # Exit immediately if a command exits with a non-zero status.
+
+          # Get the list of files changed in the PR that end with .view.lkml
+          # We compare the PR branch (HEAD) with the base branch (e.g., main)
+          files=$(git diff --name-only --diff-filter=AM ${{ github.base_ref }}...${{ github.head_ref }} | grep '\.view\.lkml$' || true)
+
+          if [ -z "$files" ]; then
+            echo "No added or modified .view.lkml files to check."
+            exit 0
+          fi
+
+          echo "Checking the following files:"
+          echo "$files"
+
+          empty_files=""
+          for file in $files; do
+            # Check if the file exists and is empty (size is zero)
+            if [ -f "$file" ] && [ ! -s "$file" ]; then
+              echo "::error file=$file::This file is empty and must have content."
+              empty_files="$empty_files $file"
+            fi
+          done
+
+          if [ -n "$empty_files" ]; then
+            echo "Found empty .view.lkml files. Failing the workflow."
+            exit 1
+          fi
+
+          echo "All checked .view.lkml files have content."
