@@ -22,7 +22,32 @@ jobs:
 
           # Get the list of files changed in the PR that end with .view.lkml
           # We compare the PR branch (HEAD) with the base branch (e.g., main)
-          files=$(git diff --name-only --diff-filter=AM ${{ github.base_ref }}...${{ github.head_ref }} | grep '\.view\.lkml$' || true)
+                    files=$(git diff --name-only --diff-filter=AM ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }} | grep '\.view\.lkml
+
+          if [ -z "$files" ]; then
+            echo "No added or modified .view.lkml files to check."
+            exit 0
+          fi
+
+          echo "Checking the following files:"
+          echo "$files"
+
+          empty_files=""
+          for file in $files; do
+            # Check if the file exists and is empty (size is zero)
+            if [ -f "$file" ] && [ ! -s "$file" ]; then
+              echo "::error file=$file::This file is empty and must have content."
+              empty_files="$empty_files $file"
+            fi
+          done
+
+          if [ -n "$empty_files" ]; then
+            echo "Found empty .view.lkml files. Failing the workflow."
+            exit 1
+          fi
+
+          echo "All checked .view.lkml files have content."
+ || true)
 
           if [ -z "$files" ]; then
             echo "No added or modified .view.lkml files to check."
