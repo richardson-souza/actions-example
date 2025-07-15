@@ -1,0 +1,72 @@
+
+name: "Validate with Gemini AI"
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  validate-with-gemini:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Find, read, and validate via Gemini
+        # Esta chave de API DEVE ser configurada nos secrets do repositório
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          set -e
+
+          files=$(git diff --name-only --diff-filter=AM ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }} | grep '\.view\.lkml$' || true)
+
+          if [ -z "$files" ]; then
+            echo "No added or modified .view.lkml files to check."
+            exit 0
+          fi
+
+          echo "Checking the following files with Gemini AI:"
+          echo "$files"
+
+          validation_failed=false
+          for file in $files; do
+            echo "--- Validating $file ---"
+            content=$(cat "$file")
+
+            # Prepara o corpo da requisição para a API do Gemini
+            # O prompt pede uma resposta simples: "EMPTY" ou "NOT_EMPTY"
+            json_payload=$(jq -n --arg content "$content" '
+            {
+              "contents": [
+                {
+                  "parts": [
+                    {
+                      "text": "You are a file content validator. Your only job is to check if the provided file content is empty. Do not add any explanation. If the file content is empty, respond with the single word: EMPTY. If the file content is not empty, respond with the single word: NOT_EMPTY. Here is the file content to check: [START OF CONTENT]\($content)[END OF CONTENT]"
+                    }
+                  ]
+                }
+              ]
+            }')
+
+            # Chama a API do Gemini
+            # Nota: jq é uma ferramenta para processar JSON, pré-instalada nos runners do GitHub
+            response=$(curl -s -H 'Content-Type: application/json' -X POST "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}" -d "$json_payload" | jq -r '.candidates[0].content.parts[0].text')
+
+            echo "Gemini AI response for $file: $response"
+
+            if [[ "$response" == "EMPTY" ]]; then
+              echo "::error file=$file::Gemini AI has determined that this file is empty."
+              validation_failed=true
+            fi
+          done
+
+          if $validation_failed; then
+            echo "One or more files failed validation by Gemini AI."
+            exit 1
+          fi
+
+          echo "All files passed Gemini AI validation."

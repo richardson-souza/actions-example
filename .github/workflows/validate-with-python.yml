@@ -1,0 +1,39 @@
+
+name: "Block Empty LookML Views (Python)"
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  validate-view-files-python:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Find and validate .view.lkml files
+        run: |
+          set -e
+
+          files=$(git diff --name-only --diff-filter=AM ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }} | grep '\.view\.lkml$' || true)
+
+          if [ -z "$files" ]; then
+            echo "No added or modified .view.lkml files to check."
+            exit 0
+          fi
+
+          echo "Checking the following files:"
+          echo "$files"
+
+          # Pass the list of files to the Python script
+          # xargs handles the case where there are no files or many files
+          echo "$files" | xargs python .github/scripts/check_empty_files.py
