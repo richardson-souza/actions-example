@@ -39,20 +39,18 @@ jobs:
 
             # Prepara o corpo da requisição para a API do Gemini
             # O prompt pede uma resposta simples: "EMPTY" ou "NOT_EMPTY"
-            json_payload=$(cat <<EOF
+            json_payload=$(jq -n --arg content "$content" '
             {
               "contents": [
                 {
                   "parts": [
                     {
-                      "text": "You are a file content validator. Your only job is to check if the provided file content is empty. Do not add any explanation. If the file content is empty, respond with the single word: EMPTY. If the file content is not empty, respond with the single word: NOT_EMPTY. Here is the file content to check: [START OF CONTENT]${content}[END OF CONTENT]"
+                      "text": "You are a file content validator. Your only job is to check if the provided file content is empty. Do not add any explanation. If the file content is empty, respond with the single word: EMPTY. If the file content is not empty, respond with the single word: NOT_EMPTY. Here is the file content to check: [START OF CONTENT]\($content)[END OF CONTENT]"
                     }
                   ]
                 }
               ]
-            }
-EOF
-            )
+            }')
 
             # Chama a API do Gemini
             # Nota: jq é uma ferramenta para processar JSON, pré-instalada nos runners do GitHub
